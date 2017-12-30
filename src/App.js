@@ -1,23 +1,27 @@
 import React, {Component} from 'react';
-import './App.css';
 import {FormGroup, FormControl, InputGroup, Glyphicon} from 'react-bootstrap';
 import Profile from './Profile';
+import Gallery from './Gallery';
+import './App.css';
 
 class App extends Component {
   constructor(props) {
     super(props);
     this.state = {
       query: '',
-      artist: null
+      artist: null,
+      tracks: null
     };
   }
 
   search() {
     const BASE_URL = "https://api.spotify.com/v1/search?";
     // request url for spotify API
-    const FETCH_URL = `${BASE_URL}q=${this.state.query}&type=artist&limit=1`;
+    let fetch_url = `${BASE_URL}q=${this.state.query}&type=artist&limit=1`;
+    // url for album
+    const ALBUM_URL = 'https://api.spotify.com/v1/artists'
     // access token for spotify API access (need refresh later)
-    const accessToken = "BQAvMC308SQahuiCK319m9KxqHsEOPi0NzKDagqoZwXdDVXoqwtk6N881LWKS135xRMLCwaEthFZwumAMwnrX2JncrxBC383zZVdQFw10p87QhXmn9pqhwAfjbQReHDNtpLbC-IeQCL-HNI613SVs5qkAfrP0LZhaATzd7fhVIyVhCe42g";
+    const accessToken = "BQCZNx9TnlJ2CFbO2rAus7_hOGm4in8Yd9mzvJrbZVRpmbvrTnOxTriG3WxUJtS8nW8YHLAUC4qouBNL9s_0_a0s-Y8sLeF3gNOVsZBpD07iX7x1w3pVh8epsGMzegMUMnVMGMTb1xUP5hDMH3bxRWEMTx0Zie39DN7VtG05WNaDHLZYmw";
     // for the API authorization
     const requestOption = {
         method: "GET",
@@ -25,13 +29,30 @@ class App extends Component {
           'Authorization': "Bearer " + accessToken
         }
     };
-    // fetch the requested data and save it to json format object
-    fetch(FETCH_URL, requestOption).then(
+    // fetch the artist data based on query and save it to json format object
+    fetch(fetch_url, requestOption).then(
       response => response.json()
     ).then(
       json => {
-        const artist = json.artists.items[0];
-        this.setState({artist:artist});
+        if (json.artists.total !== 0) {
+          const artist = json.artists.items[0];
+          this.setState({artist:artist});
+          // change the fetch url to request album data
+          fetch_url = `${ALBUM_URL}/${artist.id}/top-tracks?country=US`;
+          console.log('fetch url :', fetch_url);
+          // fetch the album information of the artists
+          fetch(fetch_url, requestOption).then(
+            response => response.json()
+          ).then(
+            json => {
+              const tracks = json.tracks;
+              console.log(`top tracks of ${artist.name}: `, tracks);
+              this.setState({tracks: tracks});
+            }
+          );
+        } else {
+          console.log(this.state.query, "is not in the database");
+        }
       }
     );
   }
@@ -59,15 +80,18 @@ class App extends Component {
             </InputGroup.Addon>
           </InputGroup>
         </FormGroup>
-
-        <Profile
-          artist={this.state.artist}
-        />
-
-        <div className="Gallery">
-          Gallery
-        </div>
-
+        {
+          (this.state.artist !== null && this.state.tracks !== null)
+          ? <div>
+              <Profile
+                artist={this.state.artist}
+              />
+            <Gallery
+              tracks={this.state.tracks}
+            />
+            </div>
+          : <div></div>
+        }
       </div>
     );
   };
